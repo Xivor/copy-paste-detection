@@ -22,7 +22,7 @@ class TestPadImage(unittest.TestCase):
         # center region equals original
         self.assertTrue(np.allclose(ip[r:r + 5, r:r + 5], im))
 
-    def test_grayscale_reflect_corners(self):a 
+    def test_grayscale_reflect_corners(self): 
         im = np.array([[1, 2, 3],
                        [4, 5, 6],
                        [7, 8, 9]], dtype=np.float32)
