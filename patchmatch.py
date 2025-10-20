@@ -2,12 +2,13 @@ import numpy as np
 from skimage import io as skio
 from utils.image_tools import get_patch, diff, prepare_images
 class PatchMatch():
-    def __init__(self, img_1_fp, img_2_fp, patch_size=10, iterations=5, seed=None):
+    def __init__(self, img_1_fp, img_2_fp, patch_size=10, iterations=5, seed=None, min_norm=0):
         self.img_1_fp = img_1_fp
         self.img_2_fp = img_2_fp
         self.patch_size = patch_size
         self.iterations = iterations
         self.seed = seed
+        self.min_norm = min_norm
         self.rng = np.random.default_rng(seed)
         self.img_1, self.img_2, self.img_1_padded, self.img_2_padded, self.img_2_max_dim = prepare_images(img_1_fp, img_2_fp, patch_size)
     
@@ -16,9 +17,12 @@ class PatchMatch():
         offsets = np.zeros((H, W, 2), dtype=np.int32)
         for i in range(H):
             for j in range(W):
-                rand_i = self.rng.integers(0, self.img_2.shape[0])
-                rand_j = self.rng.integers(0, self.img_2.shape[1])
-                offsets[i, j] = [rand_i - i, rand_j - j]
+                while True:
+                    rand_i = self.rng.integers(0, self.img_2.shape[0])
+                    rand_j = self.rng.integers(0, self.img_2.shape[1])
+                    if np.linalg.norm(np.array([rand_i - i, rand_j - j])) >= self.min_norm:
+                        offsets[i, j] = [rand_i - i, rand_j - j]
+                        break
         return offsets
 
     def _propagation(self, offsets, lin, col, forward=True):
@@ -32,23 +36,25 @@ class PatchMatch():
         # top / bottom neighbor
         if 0 <= lin + d < offsets.shape[0]:
             neighbor_offset = offsets[lin + d, col]
-            match_lin_n1, match_col_n1 = [lin, col] + neighbor_offset
-            if 0 <= match_lin_n1 < self.img_2_padded.shape[0] - self.patch_size and \
-               0 <= match_col_n1 < self.img_2_padded.shape[1] - self.patch_size:
-                diff_1 = diff(patch, get_patch(self.img_2_padded, match_lin_n1, match_col_n1, self.patch_size))
-                if diff_1 < best_diff:
-                    current_offset = neighbor_offset
-                    best_diff = diff_1
+            if np.linalg.norm(neighbor_offset) >= self.min_norm:
+                match_lin_n1, match_col_n1 = [lin, col] + neighbor_offset
+                if 0 <= match_lin_n1 < self.img_2_padded.shape[0] - self.patch_size and \
+                   0 <= match_col_n1 < self.img_2_padded.shape[1] - self.patch_size:
+                    diff_1 = diff(patch, get_patch(self.img_2_padded, match_lin_n1, match_col_n1, self.patch_size))
+                    if diff_1 < best_diff:
+                        current_offset = neighbor_offset
+                        best_diff = diff_1
         # left / right neighbor
         if 0 <= col + d < offsets.shape[1]:
             neighbor_offset = offsets[lin, col + d]
-            match_lin_n2, match_col_n2 = [lin, col] + neighbor_offset
-            if 0 <= match_lin_n2 < self.img_2_padded.shape[0] - self.patch_size and \
-               0 <= match_col_n2 < self.img_2_padded.shape[1] - self.patch_size:
-                diff_2 = diff(patch, get_patch(self.img_2_padded, match_lin_n2, match_col_n2, self.patch_size))
-                if diff_2 < best_diff:
-                    current_offset = neighbor_offset
-                    best_diff = diff_2
+            if np.linalg.norm(neighbor_offset) >= self.min_norm:
+                match_lin_n2, match_col_n2 = [lin, col] + neighbor_offset
+                if 0 <= match_lin_n2 < self.img_2_padded.shape[0] - self.patch_size and \
+                   0 <= match_col_n2 < self.img_2_padded.shape[1] - self.patch_size:
+                    diff_2 = diff(patch, get_patch(self.img_2_padded, match_lin_n2, match_col_n2, self.patch_size))
+                    if diff_2 < best_diff:
+                        current_offset = neighbor_offset
+                        best_diff = diff_2
 
         offsets[lin, col] = current_offset
 
@@ -75,10 +81,11 @@ class PatchMatch():
             rand_col = self.rng.integers(search_min_col, search_max_col + 1)
 
             random_diff = diff(patch, get_patch(self.img_2_padded, rand_lin, rand_col, self.patch_size))
+            random_offset = np.array([rand_lin - lin, rand_col - col])
 
-            if random_diff < best_diff:
+            if random_diff < best_diff and np.linalg.norm(random_offset) >= self.min_norm:
                 best_diff = random_diff
-                offsets[lin, col] = [rand_lin - lin, rand_col - col]
+                offsets[lin, col] = random_offset
 
             rad //= 2
         
