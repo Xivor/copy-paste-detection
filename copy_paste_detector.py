@@ -7,17 +7,18 @@ from utils.image_tools import get_patch, diff
 import matplotlib.pyplot as plt
 import numpy as np
 
-img_1_path = 'images/fleur_copy_paste_normal.png'
+img_1_path = 'images/suburb_copy_paste_normal.png'
 patch_size = 7
-iterations = 1
+iterations = 5
 min_norm = 15
 
 DIFF_THRESHOLD = 500.0
 
-print("initiating patch matching")
+print("initiating patch match algorithm")
 
 patch_match = PatchMatch(img_1_path, img_1_path,
-                         patch_size, iterations, seed=None, min_norm=min_norm)
+                         patch_size, iterations, seed=None, min_norm=min_norm,
+                         verbose=True)
 offsets = patch_match.run()
 
 print("patch match complete. Identifying copy-paste operations...")
