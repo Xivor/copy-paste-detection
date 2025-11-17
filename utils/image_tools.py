@@ -1,5 +1,6 @@
 import numpy as np
 import skimage.io as skio
+from numba import jit
 
 def pad_image(im, pad_radius):
     # grayscale
@@ -12,6 +13,7 @@ def pad_image(im, pad_radius):
         raise ValueError("Unsupported image dimensions")
 
 
+@jit(nopython=True, cache=True)
 def get_patch(img, lin, col, patch_size):
     # the patch's center in the original image is the top
     # left corner in the padded image
@@ -20,8 +22,9 @@ def get_patch(img, lin, col, patch_size):
     return img[lin:lin_end, col:col_end]
 
 
+@jit(nopython=True, cache=True)
 def diff(patch_1, patch_2):
-    diff = np.square(patch_1.astype(np.float32) - patch_2.astype(np.float32))
+    diff = np.square(patch_1 - patch_2)
     return np.sum(diff)
 
 def prepare_images(img_1_fp, img_2_fp, patch_size):
