@@ -11,7 +11,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from utils.image_tools import pad_image
-from patchmatch import PatchMatch
+from main.patchmatch import PatchMatch
 
 
 def _pad_spatial_shape(shape_hw_or_hwc, r):
