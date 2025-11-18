@@ -2,6 +2,7 @@ import os
 import platform
 import tempfile
 from skimage import io as skio
+import matplotlib.pyplot as plt
 import numpy as np
 
 def viewimage(im,normalise=True,MINI=0.0, MAXI=255.0):
@@ -44,3 +45,68 @@ def viewimage(im,normalise=True,MINI=0.0, MAXI=255.0):
     skio.imsave(nomfichier,imt)
     print(commande)
     os.system(commande)
+
+def detection_results(original_image_path, mask):
+
+    mask_bool = mask.astype(bool)
+
+    img = skio.imread(original_image_path)
+
+    if img.ndim == 2:
+        img = gray2rgb(img)
+    elif img.ndim == 3 and img.shape[2] == 4:
+        img = img[..., :3] 
+    img = img.astype(np.float32)
+    if img.max() <= 1.0:
+        img *= 255.0
+
+    highlight_color = np.array([255, 0, 0], dtype=np.float32)
+    alpha = 0.45 
+
+    out = img.copy()
+    out[mask_bool] = (1 - alpha) * out[mask_bool] + alpha * highlight_color
+
+    return out.astype(np.uint8)
+
+def display_results(original_image_path, detection_image, diff_threshold):
+    plt.figure(figsize=(12, 6))
+
+    img_display = skio.imread(original_image_path)
+    if img_display.ndim == 2:
+        img_display = gray2rgb(img_display)
+    img_display = img_display.astype(np.float32)
+    if img_display.max() <= 1.0:
+        img_display *= 255.0
+
+    plt.subplot(1, 2, 1)
+    plt.imshow(np.clip(img_display / np.max(img_display), 0, 1))
+    plt.title("Original Image")
+    plt.axis('off')
+
+    plt.subplot(1, 2, 2)
+    output_display = detection_image
+    if output_display.ndim == 3 and output_display.shape[2] == 2:
+        plt.imshow(img_display, cmap='gray')
+    else:
+        plt.subplot(1, 2, 1)
+        plt.imshow(np.clip(img_display / np.max(img_display), 0, 1))
+    plt.title("Original Image")
+    plt.axis('off')
+
+    plt.subplot(1, 2, 2)
+    output_display = detection_image
+    if output_display.ndim == 3 and output_display.shape[2] == 2:
+        output_display = output_display[..., 0]
+    elif output_display.ndim == 3 and output_display.shape[2] == 4:
+        output_display = output_display[..., :3]
+
+    plt.imshow(output_display.astype(np.uint8))
+    plt.title(f"Detected Regions (Threshold = {diff_threshold})")
+    plt.axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
+
+def gray2rgb(gray_image):
+    return np.stack((gray_image,)*3, axis=-1)
