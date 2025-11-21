@@ -12,10 +12,9 @@ class CopyPasteDetector:
     def __init__(self, img, patch_size, iterations, min_norm, diff_threshold):
         self.patch_size = patch_size
         self.iterations = iterations
+        # self.min_norm = max(min_norm, patch_size * 2) # avoid local patching
         self.min_norm = min_norm
         self.diff_threshold = diff_threshold
-        self.patchmatch = PatchMatch(img_path, img_path,
-                                     patch_size, iterations, seed=None, min_norm=min_norm,
         self.patchmatch = PatchMatch(img, img,
                                      patch_size, iterations, seed=None, min_norm=self.min_norm,
                                      verbose=True)
@@ -26,6 +25,25 @@ class CopyPasteDetector:
                 self.img = self.img[..., :3]
             elif self.img.shape[2] == 2:
                 self.img = self.img[..., 0]
+
+    def visualize_offsets(self):
+        """
+        Visualizes the raw offset field using HSV color space.
+        Direction -> Hue, Magnitude -> Saturation/Value
+        """
+        h, w = self.offsets.shape[:2]
+
+        magnitude = np.sqrt(self.offsets[..., 0]**2 + self.offsets[..., 1]**2)
+        angle = np.arctan2(self.offsets[..., 1], self.offsets[..., 0])
+
+        hue = (angle + np.pi) / (2 * np.pi)
+        saturation = np.ones((h, w))
+        value = magnitude / (magnitude.max() + 1e-5)
+
+        hsv_img = np.stack((hue, saturation, value), axis=-1)
+        rgb_img = hsv2rgb(hsv_img)
+
+        return (rgb_img * 255).astype(np.uint8)
 
     def compute_differences(self):
         img_padded = self.patchmatch.img_1_padded
