@@ -150,3 +150,77 @@ class CopyPasteDetector:
         diffs = self.compute_differences()
         mask = diffs < self.diff_threshold
         return mask
+
+    def detect_source_and_copy(self):
+        """
+        Differentiate between original and copy-pasted regions by calculating
+        boundary discontinuities and comparing them
+
+        returns: source_mask, copy_mask
+        """
+        raw_mask = self.detect_copy_paste()
+        # opening to remove thin noise bridges between elements
+        clean_mask = binary_opening(raw_mask, structure=np.ones((3, 3)))
+
+        labeled_array, num_features = label(clean_mask, structure=np.ones((3, 3)))
+        if num_features < 2:
+            return np.zeros_like(raw_mask), raw_mask
+
+        region_scores = {}
+        img = self.patchmatch.img_1
+        if img.ndim == 3:
+            if img.shape[2] == 4:
+                img = img[..., :3]
+            img_gray = rgb2gray(img)
+        else:
+            img_gray = img
+
+        valid_regions = []
+        for region_id in range(1, num_features + 1):
+            blob_mask = (labeled_array == region_id)
+
+            # consider minimum area for copy-paste operation, to
+            # avoid detecting areas that are similar by coincidence
+            if np.sum(blob_mask) < 50:
+                continue
+
+            # dilate in two iterations to give us a reasonably large
+            # boundary ring to calculate standard deviation
+            dilated = binary_dilation(blob_mask, iterations=2)
+            boundary_ring = dilated & ~blob_mask
+            boundary_vals = img_gray[boundary_ring]
+            if len(boundary_vals) == 0:
+                score = 0
+            else:
+                score = np.std(boundary_vals)
+
+            region_scores[region_id] = score
+            valid_regions.append(region_id)
+
+        if not valid_regions:
+            return np.zeros_like(raw_mask), raw_mask
+
+        scores = [region_scores[rid] for rid in valid_regions]
+        if len(valid_regions) == 2:
+            r1, r2 = valid_regions
+            if region_scores[r1] > region_scores[r2]:
+                copy_ids = [r1]
+                source_ids = [r2]
+            else:
+                copy_ids = [r2]
+                source_ids = [r1]
+        else:
+            # if many regions, take the mean of the score and split between sources / copies
+            mean_score = np.mean(scores)
+            source_ids = []
+            copy_ids = []
+            for rid in valid_regions:
+                if region_scores[rid] > mean_score:
+                    copy_ids.append(rid)
+                else:
+                    source_ids.append(rid)
+
+        copy_mask = np.isin(labeled_array, copy_ids)
+        source_mask = np.isin(labeled_array, source_ids)
+
+        return source_mask, copy_mask
