@@ -5,10 +5,10 @@ from tqdm import trange
 from numba import jit
 
 class PatchMatch():
-    def __init__(self, img_1_fp, img_2_fp, patch_size=10, iterations=5,
+    def __init__(self, img_1, img_2, patch_size=10, iterations=5,
                  seed=None, min_norm=0, verbose=False):
-        self.img_1_fp = img_1_fp
-        self.img_2_fp = img_2_fp
+        self.img_1 = img_1
+        self.img_2 = img_2
         self.patch_size = patch_size
         self.iterations = iterations
         self.seed = seed
@@ -16,7 +16,7 @@ class PatchMatch():
         self.seed = seed
         if seed is not None:
             np.random.seed(seed)
-        self.img_1, self.img_2, self.img_1_padded, self.img_2_padded, self.img_2_max_dim = prepare_images(img_1_fp, img_2_fp, patch_size)
+        self.img_1_padded, self.img_2_padded, self.img_2_max_dim = prepare_images(img_1, img_2, patch_size)
         self.verbose = verbose
 
     def _initialization(self):

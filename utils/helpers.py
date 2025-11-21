@@ -46,9 +46,7 @@ def viewimage(im,normalise=True,MINI=0.0, MAXI=255.0):
     print(commande)
     os.system(commande)
 
-def detection_results(original_image_path, mask):
-
-    mask_bool = mask.astype(bool)
+def detection_results(original_image_path, source_mask, copy_mask):
 
     img = skio.imread(original_image_path)
 
@@ -60,11 +58,17 @@ def detection_results(original_image_path, mask):
     if img.max() <= 1.0:
         img *= 255.0
 
-    highlight_color = np.array([255, 0, 0], dtype=np.float32)
+    source_highlight_color = np.array([0, 255, 0], dtype=np.float32)
+    copy_highlight_color = np.array([255, 0, 0], dtype=np.float32)
     alpha = 0.45 
 
     out = img.copy()
-    out[mask_bool] = (1 - alpha) * out[mask_bool] + alpha * highlight_color
+    source_bool = source_mask.astype(bool)
+    if source_bool.any():
+        out[source_bool] = (1-alpha) * out[source_bool] + alpha * source_highlight_color
+    copy_bool = copy_mask.astype(bool)
+    if copy_bool.any():
+        out[copy_bool] = (1-alpha) * out[copy_bool] + alpha * copy_highlight_color
 
     return out.astype(np.uint8)
 
@@ -72,8 +76,16 @@ def display_results(original_image_path, detection_image, diff_threshold):
     plt.figure(figsize=(12, 6))
 
     img_display = skio.imread(original_image_path)
+
     if img_display.ndim == 2:
         img_display = gray2rgb(img_display)
+
+    elif img_display.ndim == 3:
+        if img_display.shape[2] == 2:
+            img_display = gray2rgb(img_display[..., 0])
+        elif img_display.shape[2] == 4:
+            img_display = img_display[..., :3]
+
     img_display = img_display.astype(np.float32)
     if img_display.max() <= 1.0:
         img_display *= 255.0
@@ -106,7 +118,6 @@ def display_results(original_image_path, detection_image, diff_threshold):
 
     plt.tight_layout()
     plt.show()
-
 
 def gray2rgb(gray_image):
     return np.stack((gray_image,)*3, axis=-1)
