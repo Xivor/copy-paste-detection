@@ -23,9 +23,23 @@ def get_patch(img, lin, col, patch_size):
 
 
 @jit(nopython=True, cache=True)
-def diff(patch_1, patch_2):
-    diff = np.square(patch_1 - patch_2)
-    return np.sum(diff)
+def diff(patch_1, patch_2, limit):
+    p1 = patch_1.ravel()
+    p2 = patch_2.ravel()
+
+    sum = 0.0
+
+    for i in range(p1.shape[0]):
+        d = p1[i] - p2[i]
+        sum += d * d
+
+        # saves a bit of computational time by discarding
+        # this match if part of its quadratic difference is
+        # already greater than the best we currently have
+        if sum >= limit:
+            return limit
+
+    return sum
 
 def prepare_images(img_1, img_2, patch_size):
     H2, W2 = img_2.shape[:2]
