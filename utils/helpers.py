@@ -46,36 +46,18 @@ def viewimage(im,normalise=True,MINI=0.0, MAXI=255.0):
     print(commande)
     os.system(commande)
 
-def detection_results(original_image_path, source_mask, copy_mask):
+def detection_results(img, paired_result):
 
-    img = skio.imread(original_image_path)
+    paired_result = (paired_result * 255).astype(np.uint8)
 
-    if img.ndim == 2:
-        img = gray2rgb(img)
-    elif img.ndim == 3 and img.shape[2] == 4:
-        img = img[..., :3] 
-    img = img.astype(np.float32)
-    if img.max() <= 1.0:
-        img *= 255.0
+    mask = np.any(paired_result > 0, axis = -1)
+    overlay = img.copy()
+    overlay[mask] = paired_result[mask]
+    return overlay
 
-    source_highlight_color = np.array([0, 255, 0], dtype=np.float32)
-    copy_highlight_color = np.array([255, 0, 0], dtype=np.float32)
-    alpha = 0.45 
 
-    out = img.copy()
-    source_bool = source_mask.astype(bool)
-    if source_bool.any():
-        out[source_bool] = (1-alpha) * out[source_bool] + alpha * source_highlight_color
-    copy_bool = copy_mask.astype(bool)
-    if copy_bool.any():
-        out[copy_bool] = (1-alpha) * out[copy_bool] + alpha * copy_highlight_color
-
-    return out.astype(np.uint8)
-
-def display_results(original_image_path, detection_image, diff_threshold):
+def display_results(img_display, detection_image, diff_threshold):
     plt.figure(figsize=(12, 6))
-
-    img_display = skio.imread(original_image_path)
 
     if img_display.ndim == 2:
         img_display = gray2rgb(img_display)
