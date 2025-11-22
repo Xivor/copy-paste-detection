@@ -56,7 +56,7 @@ def detection_results(img, paired_result):
     return overlay
 
 
-def display_results(img_display, detection_image, diff_threshold):
+def display_results(img_display, detection_image):
     plt.figure(figsize=(12, 6))
 
     if img_display.ndim == 2:
@@ -95,7 +95,7 @@ def display_results(img_display, detection_image, diff_threshold):
         output_display = output_display[..., :3]
 
     plt.imshow(output_display.astype(np.uint8))
-    plt.title(f"Detected Regions (Threshold = {diff_threshold})")
+    plt.title(f"Detected Regions")
     plt.axis('off')
 
     plt.tight_layout()
