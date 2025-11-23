@@ -5,17 +5,35 @@ from sklearn.cluster import DBSCAN
 from skimage.color import rgb2gray, hsv2rgb
 from main.patchmatch import PatchMatch
 from utils.image_tools import get_patch, diff
+from scipy.ndimage import gaussian_filter, median_filter
 from tqdm import trange
 import matplotlib.pyplot as plt
 import numpy as np
 
 class CopyPasteDetector:
-    def __init__(self, img, patch_size, iterations, min_norm, diff_threshold):
+    def __init__(
+            self, img, patch_size, iterations,
+            min_norm, diff_threshold,
+            gaussian_filtering=False,
+            gaussian_sigma=1.5,
+            median_filtering=False,
+            median_ksize=3
+    ):
         self.patch_size = patch_size
         self.iterations = iterations
         # self.min_norm = max(min_norm, patch_size * 2) # avoid local patching
         self.min_norm = min_norm
         self.diff_threshold = diff_threshold
+
+        if gaussian_filtering:
+            img = gaussian_filter(img, sigma=1.5)
+        if median_filtering:
+            if img.ndim == 3:
+                for i in range(img.shape[2]):
+                    img[:, :, i] = median_filter(img[:, :, i], size=3)
+            else:
+                img = median_filter(img, size=median_ksize)
+
         self.patchmatch = PatchMatch(img, img,
                                      patch_size, iterations, seed=None, min_norm=self.min_norm,
                                      verbose=True)
@@ -42,12 +60,6 @@ class CopyPasteDetector:
         """
         h, w = self.offsets.shape[:2]
 
-        if median_filtering:
-            # in noisy images, since the offsets can have slight differences,
-            # we uniformize then by applying a median filter
-            filt_col = median_filter(self.offsets[..., 0], size=self.patch_size)
-            filt_lin = median_filter(self.offsets[..., 1], size=self.patch_size)
-            self.offsets = np.stack([filt_col, filt_lin], axis=-1)
 
         h_pad, w_pad = self.patchmatch.img_1_padded.shape[:2]
         grid = np.moveaxis(np.indices((h, w)), 0, -1)
@@ -61,6 +73,13 @@ class CopyPasteDetector:
         diffs = self.compute_differences()
         copy_paste_candidates = (diffs < self.diff_threshold) & (offset_magnitude >= self.min_norm)
         copy_paste_candidates = binary_opening(copy_paste_candidates, structure=np.ones((5, 5)))
+
+        # if median_filtering:
+        #     # in noisy images, since the offsets can have slight differences,
+        #     # we uniformize then by applying a median filter
+        #     filt_col = median_filter(self.offsets[..., 0], size=self.patch_size)
+        #     filt_lin = median_filter(self.offsets[..., 1], size=self.patch_size)
+        #     self.offsets = np.stack([filt_col, filt_lin], axis=-1)
 
         valid_indices = []
         valid_offsets = []
