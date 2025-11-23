@@ -26,7 +26,10 @@ class CopyPasteDetector:
         self.diff_threshold = diff_threshold
 
         if gaussian_filtering:
-            img = gaussian_filter(img, sigma=1.5)
+            if img.ndim == 3:
+                img = gaussian_filter(img, sigma=(gaussian_sigma, gaussian_sigma, 0.0))
+            else:
+                img = gaussian_filter(img, sigma=gaussian_sigma)
         if median_filtering:
             if img.ndim == 3:
                 for i in range(img.shape[2]):
@@ -51,7 +54,8 @@ class CopyPasteDetector:
             flat_threshold=0.0,
             clustering=True,
             min_cluster_size=50,
-            median_filtering=True
+            median_filtering=True,
+            spatial_weight=0.05
     ):
         """
         Identify source region and its copies by clustering offset vectors
@@ -66,25 +70,25 @@ class CopyPasteDetector:
         max_valid = np.array([h_pad, w_pad]) - self.patch_size
         self.offsets = np.clip(self.offsets, -grid, max_valid - grid)
 
-        # threshold to avoid detecting offsets in flat regions (background)
-        if self.img.max() > 1.0:
-            flat_threshold *= 255
         offset_magnitude = np.sqrt(self.offsets[..., 0]**2 + self.offsets[..., 1]**2)
         diffs = self.compute_differences()
         copy_paste_candidates = (diffs < self.diff_threshold) & (offset_magnitude >= self.min_norm)
         copy_paste_candidates = binary_opening(copy_paste_candidates, structure=np.ones((5, 5)))
 
-        # if median_filtering:
-        #     # in noisy images, since the offsets can have slight differences,
-        #     # we uniformize then by applying a median filter
-        #     filt_col = median_filter(self.offsets[..., 0], size=self.patch_size)
-        #     filt_lin = median_filter(self.offsets[..., 1], size=self.patch_size)
-        #     self.offsets = np.stack([filt_col, filt_lin], axis=-1)
+        if median_filtering:
+            # in noisy images, since the offsets can have slight differences,
+            # we uniformize then by applying a median filter
+            filt_col = median_filter(self.offsets[..., 0], size=self.patch_size)
+            filt_lin = median_filter(self.offsets[..., 1], size=self.patch_size)
+            self.offsets = np.stack([filt_col, filt_lin], axis=-1)
 
         valid_indices = []
         valid_offsets = []
         lin_coords, col_coords = np.where(copy_paste_candidates)
 
+        # threshold to avoid detecting offsets in flat regions (background)
+        if self.img.max() > 1.0:
+            flat_threshold *= 255
         # use standard deviation to discard regions that are too flat
         for lin, col in zip(lin_coords, col_coords):
             patch = self.img[lin:lin + self.patch_size, col:col + self.patch_size]
@@ -102,7 +106,8 @@ class CopyPasteDetector:
         if clustering:
             # cluster offsets that are acceptably similar (differ at most [eps] from one another),
             # as in a noisy image we may have some variance between offsets regarding the same copied-pasted region
-            clustering = DBSCAN(eps=cluster_eps, min_samples=min_cluster_size).fit(valid_offsets)
+            features = np.column_stack((valid_offsets, valid_indices * spatial_weight))
+            clustering = DBSCAN(eps=cluster_eps, min_samples=min_cluster_size).fit(features)
             labels = clustering.labels_
 
             # -1 means "noise"
