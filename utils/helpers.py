@@ -51,7 +51,11 @@ def detection_results(img, paired_result):
     paired_result = (paired_result * 255).astype(np.uint8)
 
     mask = np.any(paired_result > 0, axis = -1)
-    overlay = img.copy()
+    overlay = img.copy().astype(np.uint8)
+
+    if overlay.ndim == 2:
+        overlay = np.stack([overlay] * 3, axis=-1)
+
     overlay[mask] = paired_result[mask]
     return overlay
 
