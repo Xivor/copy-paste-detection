@@ -55,6 +55,7 @@ class CopyPasteDetector:
             clustering=True,
             min_cluster_size=50,
             median_filtering=True,
+            median_filter_ksize=4,
             spatial_weight=0.05
     ):
         """
@@ -78,8 +79,8 @@ class CopyPasteDetector:
         if median_filtering:
             # in noisy images, since the offsets can have slight differences,
             # we uniformize then by applying a median filter
-            filt_col = median_filter(self.offsets[..., 0], size=self.patch_size)
-            filt_lin = median_filter(self.offsets[..., 1], size=self.patch_size)
+            filt_col = median_filter(self.offsets[..., 0], median_filter_ksize)
+            filt_lin = median_filter(self.offsets[..., 1], median_filter_ksize)
             self.offsets = np.stack([filt_col, filt_lin], axis=-1)
 
         valid_indices = []
@@ -105,7 +106,9 @@ class CopyPasteDetector:
 
         if clustering:
             # cluster offsets that are acceptably similar (differ at most [eps] from one another),
-            # as in a noisy image we may have some variance between offsets regarding the same copied-pasted region
+            # as in a noisy image we may have some variance between offsets regarding the same copied-pasted region.
+            # We also consider the position of the pixel to do the clustering, as it sepparates blobs that
+            # have the same offset value.
             features = np.column_stack((valid_offsets, valid_indices * spatial_weight))
             clustering = DBSCAN(eps=cluster_eps, min_samples=min_cluster_size).fit(features)
             labels = clustering.labels_
