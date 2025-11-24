@@ -39,8 +39,15 @@ Below is a minimal example showing how to run the copy–paste detector on a sin
 5. **Run detection**
 
 ```python
+import os
+import sys
+THIS_DIR = os.path.dirname(__file__)
+PROJECT_ROOT = os.path.abspath(os.path.join(THIS_DIR, ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 import skimage.io
-from main.copy_paste_detector import CopyPasteDetector as CPD
+from main.detector import CopyPasteDetector as CPD
 
 # 1) Load image
 img_path = "../images/fleur_copy_paste_normal.png"
