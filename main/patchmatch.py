@@ -3,10 +3,17 @@ from utils.image_tools import get_patch, diff, prepare_images
 import time
 from tqdm import trange
 from numba import jit
+import skimage.io as skio
 
 class PatchMatch():
     def __init__(self, img_1, img_2, patch_size=10, iterations=5,
                  seed=None, min_norm=0, verbose=False):
+        
+        if isinstance(img_1, str):
+            img_1 = skio.imread(img_1)
+        if isinstance(img_2, str):
+            img_2 = skio.imread(img_2)
+
         self.img_1 = img_1
         self.img_2 = img_2
         self.patch_size = patch_size
