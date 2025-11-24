@@ -23,7 +23,7 @@ def get_patch(img, lin, col, patch_size):
 
 
 @jit(nopython=True, cache=True)
-def diff(patch_1, patch_2, limit):
+def diff(patch_1, patch_2, limit=np.inf):
     p1 = patch_1.ravel()
     p2 = patch_2.ravel()
 
@@ -42,6 +42,10 @@ def diff(patch_1, patch_2, limit):
     return sum
 
 def prepare_images(img_1, img_2, patch_size):
+    if isinstance(img_1, str):
+        img_1 = skio.imread(img_1)
+    if isinstance(img_2, str):
+        img_2 = skio.imread(img_2)
     H2, W2 = img_2.shape[:2]
     img_2_max_dim = max(H2, W2)
     pad_radius = patch_size // 2

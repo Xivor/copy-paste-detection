@@ -1,4 +1,3 @@
-from utils.image_tools import pad_image, get_patch, diff, prepare_images
 import os
 import sys
 import unittest
@@ -11,6 +10,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(THIS_DIR, ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
+from utils.image_tools import pad_image, get_patch, diff, prepare_images
 
 class TestPadImage(unittest.TestCase):
     def test_grayscale_shape_and_center_unchanged(self):
@@ -99,7 +99,6 @@ class TestDiff(unittest.TestCase):
 class TestPrepareImages(unittest.TestCase):
     def test_prepare_images_grayscale(self):
         with tempfile.TemporaryDirectory() as td:
-            # Create small grayscale images and save
             A = (np.random.rand(8, 9) * 255).astype(np.uint8)
             B = (np.random.rand(10, 7) * 255).astype(np.uint8)
             fA = os.path.join(td, "A.png")
@@ -108,17 +107,13 @@ class TestPrepareImages(unittest.TestCase):
             skio.imsave(fB, B)
 
             p = 5
-            img_1, img_2, img_1_p, img_2_p, maxdim = prepare_images(fA, fB, p)
+            img_1_p, img_2_p, maxdim = prepare_images(fA, fB, p)
 
-            # dtypes
-            self.assertEqual(img_1.dtype, np.float32)
-            self.assertEqual(img_2.dtype, np.float32)
-            self.assertEqual(img_1_p.dtype, np.float32)
-            self.assertEqual(img_2_p.dtype, np.float32)
+            # dtypes (your new version keeps uint8)
+            self.assertEqual(img_1_p.dtype, np.uint8)
+            self.assertEqual(img_2_p.dtype, np.uint8)
 
             # shapes
-            self.assertEqual(img_1.shape, A.shape)
-            self.assertEqual(img_2.shape, B.shape)
             r = p // 2
             self.assertEqual(
                 img_1_p.shape,
@@ -129,18 +124,17 @@ class TestPrepareImages(unittest.TestCase):
                 (B.shape[0] + 2 * r,
                  B.shape[1] + 2 * r))
 
-            # max dim uses spatial dims only
+            # max dim
             self.assertEqual(maxdim, max(B.shape[:2]))
 
             # center region equals originals
             self.assertTrue(np.allclose(
-                img_1_p[r:r + A.shape[0], r:r + A.shape[1]], img_1))
+                img_1_p[r:r + A.shape[0], r:r + A.shape[1]], A))
             self.assertTrue(np.allclose(
-                img_2_p[r:r + B.shape[0], r:r + B.shape[1]], img_2))
+                img_2_p[r:r + B.shape[0], r:r + B.shape[1]], B))
 
     def test_prepare_images_color(self):
         with tempfile.TemporaryDirectory() as td:
-            # Create small color images and save
             A = (np.random.rand(6, 7, 3) * 255).astype(np.uint8)
             B = (np.random.rand(5, 9, 3) * 255).astype(np.uint8)
             fA = os.path.join(td, "A.png")
@@ -149,31 +143,28 @@ class TestPrepareImages(unittest.TestCase):
             skio.imsave(fB, B)
 
             p = 7
-            img_1, img_2, img_1_p, img_2_p, maxdim = prepare_images(fA, fB, p)
+            img_1_p, img_2_p, maxdim = prepare_images(fA, fB, p)
 
-            # dtypes
-            self.assertEqual(img_1.dtype, np.float32)
-            self.assertEqual(img_2.dtype, np.float32)
-            self.assertEqual(img_1_p.dtype, np.float32)
-            self.assertEqual(img_2_p.dtype, np.float32)
+            # dtypes (uint8 expected)
+            self.assertEqual(img_1_p.dtype, np.uint8)
+            self.assertEqual(img_2_p.dtype, np.uint8)
 
             # shapes
-            self.assertEqual(img_1.shape, A.shape)
-            self.assertEqual(img_2.shape, B.shape)
             r = p // 2
             self.assertEqual(
                 img_1_p.shape, (A.shape[0] + 2 * r, A.shape[1] + 2 * r, 3))
             self.assertEqual(
                 img_2_p.shape, (B.shape[0] + 2 * r, B.shape[1] + 2 * r, 3))
 
-            # max dim uses spatial dims only
+            # max dim
             self.assertEqual(maxdim, max(B.shape[:2]))
 
             # center region equals originals
             self.assertTrue(np.allclose(
-                img_1_p[r:r + A.shape[0], r:r + A.shape[1], :], img_1))
+                img_1_p[r:r + A.shape[0], r:r + A.shape[1], :], A))
             self.assertTrue(np.allclose(
-                img_2_p[r:r + B.shape[0], r:r + B.shape[1], :], img_2))
+                img_2_p[r:r + B.shape[0], r:r + B.shape[1], :], B))
+
 
 
 if __name__ == "__main__":
