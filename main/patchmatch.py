@@ -3,12 +3,19 @@ from utils.image_tools import get_patch, diff, prepare_images
 import time
 from tqdm import trange
 from numba import jit
+import skimage.io as skio
 
 class PatchMatch():
-    def __init__(self, img_1_fp, img_2_fp, patch_size=10, iterations=5,
+    def __init__(self, img_1, img_2, patch_size=10, iterations=5,
                  seed=None, min_norm=0, verbose=False):
-        self.img_1_fp = img_1_fp
-        self.img_2_fp = img_2_fp
+        
+        if isinstance(img_1, str):
+            img_1 = skio.imread(img_1)
+        if isinstance(img_2, str):
+            img_2 = skio.imread(img_2)
+
+        self.img_1 = img_1
+        self.img_2 = img_2
         self.patch_size = patch_size
         self.iterations = iterations
         self.seed = seed
@@ -16,7 +23,7 @@ class PatchMatch():
         self.seed = seed
         if seed is not None:
             np.random.seed(seed)
-        self.img_1, self.img_2, self.img_1_padded, self.img_2_padded, self.img_2_max_dim = prepare_images(img_1_fp, img_2_fp, patch_size)
+        self.img_1_padded, self.img_2_padded, self.img_2_max_dim = prepare_images(img_1, img_2, patch_size)
         self.verbose = verbose
 
     def _initialization(self):
@@ -86,7 +93,7 @@ def _propagation(offsets, img_1_padded, img_2_padded, patch_size,
 
     current_offset = offsets[lin, col]
     match_lin, match_col = np.array([lin, col]) + current_offset
-    best_diff = diff(patch, get_patch(img_2_padded, match_lin, match_col, patch_size))
+    best_diff = diff(patch, get_patch(img_2_padded, match_lin, match_col, patch_size), np.inf)
 
     # top / bottom neighbor
     if 0 <= lin + d < offsets.shape[0]:
@@ -95,7 +102,7 @@ def _propagation(offsets, img_1_padded, img_2_padded, patch_size,
             match_lin_n1, match_col_n1 = np.array([lin, col]) + neighbor_offset
             if 0 <= match_lin_n1 < img_2_padded.shape[0] - patch_size and \
                0 <= match_col_n1 < img_2_padded.shape[1] - patch_size:
-                diff_1 = diff(patch, get_patch(img_2_padded, match_lin_n1, match_col_n1, patch_size))
+                diff_1 = diff(patch, get_patch(img_2_padded, match_lin_n1, match_col_n1, patch_size), best_diff)
                 if diff_1 < best_diff:
                     current_offset = neighbor_offset
                     best_diff = diff_1
@@ -106,7 +113,7 @@ def _propagation(offsets, img_1_padded, img_2_padded, patch_size,
             match_lin_n2, match_col_n2 = np.array([lin, col]) + neighbor_offset
             if 0 <= match_lin_n2 < img_2_padded.shape[0] - patch_size and \
                0 <= match_col_n2 < img_2_padded.shape[1] - patch_size:
-                diff_2 = diff(patch, get_patch(img_2_padded, match_lin_n2, match_col_n2, patch_size))
+                diff_2 = diff(patch, get_patch(img_2_padded, match_lin_n2, match_col_n2, patch_size), best_diff)
                 if diff_2 < best_diff:
                     current_offset = neighbor_offset
                     best_diff = diff_2
@@ -137,7 +144,7 @@ def _random_search(offsets, img_1_padded, img_2_padded, patch_size,
         rand_lin = np.random.randint(search_min_lin, search_max_lin + 1)
         rand_col = np.random.randint(search_min_col, search_max_col + 1)
 
-        random_diff = diff(patch, get_patch(img_2_padded, rand_lin, rand_col, patch_size))
+        random_diff = diff(patch, get_patch(img_2_padded, rand_lin, rand_col, patch_size), best_diff)
         random_offset = np.array([rand_lin - lin, rand_col - col])
 
         if random_diff < best_diff and random_offset[0]**2 + random_offset[1]**2 >= min_norm_squared:

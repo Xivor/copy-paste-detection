@@ -89,26 +89,6 @@ class TestGroundTruthPatchMatchClass(unittest.TestCase):
             frac_loose = _fraction_within_tol(ofs, dy, dx, tol=1)
             self.assertGreater(frac_loose, 0.90)
 
-    # def test_constant_translation_color(self):
-    #     with tempfile.TemporaryDirectory() as td:
-    #         np.random.seed(3)
-    #         A = (np.random.rand(40, 45, 3) * 255).astype(np.uint8)
-    #         dy, dx = -4, 5
-    #         B = _shift_image_reflect(A, dy, dx)
-
-    #         fA = os.path.join(td, "A.png")
-    #         fB = os.path.join(td, "B.png")
-    #         skio.imsave(fA, A)
-    #         skio.imsave(fB, B)
-
-    #         pm = PatchMatch(fA, fB, patch_size=9, iterations=6, seed=3)
-    #         ofs = pm.run()
-
-    #         frac_exact = _fraction_within_tol(ofs, dy, dx, tol=0)
-    #         self.assertGreater(frac_exact, 0.90)
-    #         frac_loose = _fraction_within_tol(ofs, dy, dx, tol=1)
-    #         self.assertGreater(frac_loose, 0.90)
-
     def test_identity_with_noise_gray(self):
         with tempfile.TemporaryDirectory() as td:
             rng = np.random.default_rng(4)
@@ -154,26 +134,6 @@ class TestGroundTruthPatchMatchClass(unittest.TestCase):
                     self.assertGreaterEqual(mj, 0)
                     self.assertLessEqual(mi, H2p - p)
                     self.assertLessEqual(mj, W2p - p)
-
-    # def test_reproducibility_with_seed(self):
-    #     with tempfile.TemporaryDirectory() as td:
-    #         A = (np.random.rand(48, 48) * 255).astype(np.uint8)
-    #         B = (np.random.rand(48, 48) * 255).astype(np.uint8)
-    #         fA = os.path.join(td, "A.png")
-    #         fB = os.path.join(td, "B.png")
-    #         skio.imsave(fA, A)
-    #         skio.imsave(fB, B)
-
-    #         pm1 = PatchMatch(fA, fB, patch_size=7, iterations=3, seed=123)
-    #         pm2 = PatchMatch(fA, fB, patch_size=7, iterations=3, seed=123)
-    #         pm3 = PatchMatch(fA, fB, patch_size=7, iterations=3, seed=456)
-
-    #         ofs1 = pm1.run()
-    #         ofs2 = pm2.run()
-    #         ofs3 = pm3.run()
-
-    #         self.assertTrue(np.array_equal(ofs1, ofs2))     # same seed → identical
-    #         self.assertFalse(np.array_equal(ofs1, ofs3))    # different seed → likely different
 
 
 if __name__ == "__main__":

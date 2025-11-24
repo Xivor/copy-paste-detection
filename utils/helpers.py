@@ -46,34 +46,32 @@ def viewimage(im,normalise=True,MINI=0.0, MAXI=255.0):
     print(commande)
     os.system(commande)
 
-def detection_results(original_image_path, mask):
+def detection_results(img, paired_result):
 
-    mask_bool = mask.astype(bool)
+    paired_result = (paired_result * 255).astype(np.uint8)
 
-    img = skio.imread(original_image_path)
+    mask = np.any(paired_result > 0, axis = -1)
+    overlay = img.copy().astype(np.uint8)
 
-    if img.ndim == 2:
-        img = gray2rgb(img)
-    elif img.ndim == 3 and img.shape[2] == 4:
-        img = img[..., :3] 
-    img = img.astype(np.float32)
-    if img.max() <= 1.0:
-        img *= 255.0
+    if overlay.ndim == 2:
+        overlay = np.stack([overlay] * 3, axis=-1)
 
-    highlight_color = np.array([255, 0, 0], dtype=np.float32)
-    alpha = 0.45 
+    overlay[mask] = paired_result[mask]
+    return overlay
 
-    out = img.copy()
-    out[mask_bool] = (1 - alpha) * out[mask_bool] + alpha * highlight_color
 
-    return out.astype(np.uint8)
-
-def display_results(original_image_path, detection_image, diff_threshold):
+def display_results(img_display, detection_image):
     plt.figure(figsize=(12, 6))
 
-    img_display = skio.imread(original_image_path)
     if img_display.ndim == 2:
         img_display = gray2rgb(img_display)
+
+    elif img_display.ndim == 3:
+        if img_display.shape[2] == 2:
+            img_display = gray2rgb(img_display[..., 0])
+        elif img_display.shape[2] == 4:
+            img_display = img_display[..., :3]
+
     img_display = img_display.astype(np.float32)
     if img_display.max() <= 1.0:
         img_display *= 255.0
@@ -101,12 +99,11 @@ def display_results(original_image_path, detection_image, diff_threshold):
         output_display = output_display[..., :3]
 
     plt.imshow(output_display.astype(np.uint8))
-    plt.title(f"Detected Regions (Threshold = {diff_threshold})")
+    plt.title(f"Detected Regions")
     plt.axis('off')
 
     plt.tight_layout()
     plt.show()
-
 
 def gray2rgb(gray_image):
     return np.stack((gray_image,)*3, axis=-1)

@@ -23,16 +23,32 @@ def get_patch(img, lin, col, patch_size):
 
 
 @jit(nopython=True, cache=True)
-def diff(patch_1, patch_2):
-    diff = np.square(patch_1 - patch_2)
-    return np.sum(diff)
+def diff(patch_1, patch_2, limit=np.inf):
+    p1 = patch_1.ravel()
+    p2 = patch_2.ravel()
 
-def prepare_images(img_1_fp, img_2_fp, patch_size):
-    img_1 = skio.imread(img_1_fp).astype(np.float32)
-    img_2 = skio.imread(img_2_fp).astype(np.float32)
+    sum = 0.0
+
+    for i in range(p1.shape[0]):
+        d = p1[i] - p2[i]
+        sum += d * d
+
+        # saves a bit of computational time by discarding
+        # this match if part of its quadratic difference is
+        # already greater than the best we currently have
+        if sum >= limit:
+            return limit
+
+    return sum
+
+def prepare_images(img_1, img_2, patch_size):
+    if isinstance(img_1, str):
+        img_1 = skio.imread(img_1)
+    if isinstance(img_2, str):
+        img_2 = skio.imread(img_2)
     H2, W2 = img_2.shape[:2]
     img_2_max_dim = max(H2, W2)
     pad_radius = patch_size // 2
     img_1_padded = pad_image(img_1, pad_radius)
     img_2_padded = pad_image(img_2, pad_radius)
-    return img_1, img_2, img_1_padded, img_2_padded, img_2_max_dim
+    return img_1_padded, img_2_padded, img_2_max_dim
