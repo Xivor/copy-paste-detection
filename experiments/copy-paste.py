@@ -55,21 +55,21 @@ def detection_normal_image():
 
 
 def detection_noisy_image():
-    img_path = "../images/lena_inpainted_4_impulse.png"
+    img_path = "../images/lena_inpainted_4_gauss.png"
     img = skio.imread(img_path)
     patch_size = 7
     iterations = 5
-    min_norm = 5
-    diff_threshold = 100.0
+    min_norm = 1
+    diff_threshold = 500.0
     img_orig = img.copy()
 
-    detector = CPD(img, patch_size, iterations, min_norm, diff_threshold, median_filtering=True)
+    detector = CPD(img, patch_size, iterations, min_norm, diff_threshold, gaussian_filtering=True)
     img = detector.img
     if img.ndim == 2:
         img = gray2rgb(img)
     elif img.shape[2] == 4:
         img = img[..., :3]
-    cluster_eps=1.0
+    cluster_eps=4.0
     flat_threshold=0.0
     min_cluster_size=10
     paired_result = detector.detect_paired_regions(
@@ -79,7 +79,7 @@ def detection_noisy_image():
         min_cluster_size=min_cluster_size,
         median_filtering=True,
         median_filter_ksize=3,
-        spatial_weight=0.1
+        spatial_weight=0.01
     )
     result = detection_results(img, paired_result)
     display_results(img_orig, result)
